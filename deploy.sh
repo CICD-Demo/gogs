@@ -3,7 +3,6 @@
 cd $(dirname $0)
 
 . utils
-
 . ../../environment
 
 HOSTNAME=gogs.$DOMAIN
