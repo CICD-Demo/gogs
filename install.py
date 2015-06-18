@@ -1,11 +1,9 @@
 #!/usr/bin/python
 
 import os
+import re
 import requests
-import shutil
-import subprocess
 import sys
-import tempfile
 import urllib
 
 class API(object):
@@ -47,37 +45,33 @@ class API(object):
 		self._post("/%s/%s/settings" % (owner_name, repo_name), {"action": "delete", "repo_name": repo_name, "password": password})
 
 
-def git_move(local, remote):
-	os.environ["GIT_SSH"] = "%s/issh" % os.path.abspath(os.path.dirname(sys.argv[0]))
-	d = tempfile.mkdtemp()
-	subprocess.call(["git", "clone", "--mirror", local, "."], cwd=d)
-	subprocess.call(["git", "push", "--mirror", remote], cwd=d)
-	shutil.rmtree(d)
+def read_env():
+        for l in open(root + "/environment"):
+                if l[0] in ["#", "\n"]: continue
+                (k, v) = l.strip().split("=", 1)
+                if v[0] in ["'", '"'] and v[-1] == v[0]:
+                        v = v[1:-1]
+                globals()[k] = v
 
+root = os.path.abspath(os.path.dirname(sys.argv[0]) + "/../..")
+read_env()
+api = API("http://%s" % sys.argv[1])
 
-HOSTNAME = sys.argv[1]
-USERNAME = "administrator"
-PASSWORD = "redhat"
-ORG = "monster-integration"
-
-api = API("http://%s" % HOSTNAME)
-
-for user in [USERNAME, "jim"]:
-	api.user_sign_up(user, PASSWORD, "%s@example.com" % user)
-	api.user_login(user, PASSWORD)
-        if user == "jim":
+for user in ["administrator", DEMOUSER]:
+	api.user_sign_up(user, DEMOPW, "%s@%s" % (user, DOMAIN))
+	api.user_login(user, DEMOPW)
+        if user == DEMOUSER:
                 api.user_settings_ssh("id_dsa.pub", "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAxc/Ir6cm/PnjDbgseHB1y4SGc5WmgTwb8chz+wiVjnfQGM6AmFHVna7of0P+beYPUMUyCZO4bz+5x8kE+j6tpREHQ8Ng0HmzsaPuLpx9yrspPshL+HAqCRO0v0C31oqJzG6P92pz/tvsgMKypVvyDOcvtATRV3xkHHftyHFtwA1boB0DhAsXxrn5aXzbXXH3Kly4dNpGE5Z4WhMm4byopLCtrNPQGF8PNVyxbr2xRRDNzzdtHnX3OwNCqbvg1jpZ4vSVUOdKjX5vtE9938KGbPdJUfoXkop3VrdVoGXCckOOlEZo8q0jVWQnRFlyHWSaYFHzZfly5UmJpwaoLXMoaw== jminter")
         else:
                 api.user_settings_ssh("id_dsa.pub", open("/root/.ssh/authorized_keys").read())
 	api.user_logout()
 
-api.user_login(USERNAME, PASSWORD)
-api.org_create(ORG, "%s@example.com" % ORG)
-api.org_invitations_new(ORG, "jim")
+api.user_login("administrator", DEMOPW)
+api.org_create(INTEGRATION, "%s@%s" % (INTEGRATION, DOMAIN))
+api.org_invitations_new(INTEGRATION, DEMOUSER)
 
-for repo in ["apiserver", "camel", "frontend", "webserver"]:
-	api.repo_create(3, repo)
-	# git_move("git://192.168.0.254/%s" % repo, "ssh://git@localhost:2222/%s/%s.git" % (ORG, repo))
-	# api.repo_delete(ORG, repo, PASSWORD)
+for repo in MONSTER_REPOS.split(" "):
+        if os.path.exists(root + "/monster/" + repo + "/build.sh"):
+                api.repo_create(3, repo)
 
 api.user_logout()

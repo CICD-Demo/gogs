@@ -6,9 +6,9 @@ cd $(dirname $0)
 
 . ../../environment
 
-HOSTNAME=gogs.example.com
+HOSTNAME=gogs.$DOMAIN
 
-osc create -f - <<EOF
+osc create -f - <<EOF || true
 kind: List
 apiVersion: v1beta3
 items:
@@ -27,10 +27,6 @@ items:
         labels:
           component: gogs
       spec:
-#        volumes:
-#        - name: home
-#          hostPath:
-#            path: /vagrant/gogshome
         containers:
         - name: gogs
           image: cicddemo/gogs:latest
@@ -52,19 +48,6 @@ items:
             value: "true"
           - name: GOGS_WEBHOOK__SKIP_TLS_VERIFY
             value: "true"
-#          - name: GOGS_DATABASE__DB_TYPE
-#            value: mysql
-#          - name: GOGS_DATABASE__HOST
-#            value: gogs-mysql:3306
-#          - name: GOGS_DATABASE__NAME
-#            value: $GOGS_MYSQL_DATABASE
-#          - name: GOGS_DATABASE__USER
-#            value: $GOGS_MYSQL_USER
-#          - name: GOGS_DATABASE__PASSWD
-#            value: $GOGS_MYSQL_PASSWORD
-#          volumeMounts:
-#          - name: home
-#            mountPath: /home/git
       labels:
         component: gogs
 
@@ -90,3 +73,11 @@ items:
   host: $HOSTNAME
   serviceName: gogs
 EOF
+
+SVCIP=$(osc get services gogs -o template --template='{{.spec.portalIP}}')
+
+while ! curl -fsm 1 -o /dev/null $SVCIP; do
+  sleep 1
+done
+
+./install.py $SVCIP
