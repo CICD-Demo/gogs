@@ -16,15 +16,18 @@ items:
   metadata:
     name: gogs
     labels:
-      component: gogs
+      service: gogs
+      function: infra
   spec:
     replicas: 1
     selector:
-      component: gogs
+      service: gogs
+      function: infra
     template:
       metadata:
         labels:
-          component: gogs
+          service: gogs
+          function: infra
       spec:
         containers:
         - name: gogs
@@ -48,27 +51,31 @@ items:
           - name: GOGS_WEBHOOK__SKIP_TLS_VERIFY
             value: "true"
       labels:
-        component: gogs
+        service: gogs
+        function: infra
 
 - kind: Service
   apiVersion: v1beta3
   metadata:
     name: gogs
     labels:
-      component: gogs
+      service: gogs
+      function: infra
   spec:
     ports:
     - port: 80
       targetPort: 3000
     selector:
-      component: gogs
+      service: gogs
+      function: infra
 
 - kind: Route
   apiVersion: v1beta1
   metadata:
     name: gogs
     labels:
-      component: gogs
+      service: gogs
+      function: infra
   host: $HOSTNAME
   serviceName: gogs
 EOF
@@ -80,3 +87,4 @@ while ! curl -fsm 1 -o /dev/null $SVCIP; do
 done
 
 ./install.py $SVCIP
+../../bin/push-gogs.sh
