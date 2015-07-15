@@ -7,12 +7,12 @@ cd $(dirname $0)
 
 HOSTNAME=gogs.$DOMAIN
 
-osc create -f - <<EOF || true
+oc create -f - <<EOF || true
 kind: List
-apiVersion: v1beta3
+apiVersion: v1
 items:
 - kind: ReplicationController
-  apiVersion: v1beta3
+  apiVersion: v1
   metadata:
     name: gogs
     labels:
@@ -50,12 +50,15 @@ items:
             value: "true"
           - name: GOGS_WEBHOOK__SKIP_TLS_VERIFY
             value: "true"
+          securityContext:
+            runAsUser: 0
+        serviceAccount: root
       labels:
         service: gogs
         function: infra
 
 - kind: Service
-  apiVersion: v1beta3
+  apiVersion: v1
   metadata:
     name: gogs
     labels:
@@ -70,21 +73,23 @@ items:
       function: infra
 
 - kind: Route
-  apiVersion: v1beta1
+  apiVersion: v1
   metadata:
     name: gogs
     labels:
       service: gogs
       function: infra
-  host: $HOSTNAME
-  serviceName: gogs
+  spec:
+    host: $HOSTNAME
+    to:
+      name: gogs
 EOF
 
-SVCIP=$(osc get services gogs -o template --template='{{.spec.portalIP}}')
+SVCIP=$(oc get services gogs -o template --template='{{.spec.portalIP}}')
 
 while ! curl -fsm 1 -o /dev/null $SVCIP; do
   sleep 1
 done
 
 ./install.py $SVCIP
-../../bin/push-gogs.sh
+SSH_IDENTITY=$HOME/.ssh/id_rsa_administrator ../../bin/push-gogs.sh
